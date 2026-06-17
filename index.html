@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resistor Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="script.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Electronics helper</p>
+        <h1>Resistor calculator</h1>
+        <p class="lead">
+          Pick a common resistor type, choose each band color, and see the resistance update instantly.
+          A built-in guide shows which ring is the first one.
+        </p>
+      </section>
+
+      <section class="panel app" aria-label="Resistor calculator">
+        <div class="app-grid">
+          <div class="controls">
+            <label class="field">
+              <span>Resistor type</span>
+              <select id="resistorType">
+                <option value="beige">Beige body, 4-band</option>
+                <option value="blue">Blue body, 5-band</option>
+              </select>
+            </label>
+
+            <div id="bandControls" class="band-controls" aria-live="polite"></div>
+
+            <div class="help-card">
+              <h2>How to find the first ring</h2>
+              <p>
+                Look for the tolerance band. It is usually spaced a little farther away from the others.
+                Read the resistor from the opposite end. In this calculator, band 1 is always marked for you.
+              </p>
+            </div>
+          </div>
+
+          <div class="results">
+            <div class="resistor-stage">
+              <div class="resistor" id="resistorPreview" aria-label="Resistor preview"></div>
+              <p class="stage-note" id="orientationNote"></p>
+            </div>
+
+            <div class="readout-card">
+              <p class="readout-label">Resistance</p>
+              <div class="readout-value" id="resistanceValue">0 Ω</div>
+              <p class="readout-detail" id="resistanceDetail"></p>
+            </div>
+
+            <div class="readout-card muted">
+              <p class="readout-label">Band order</p>
+              <p class="readout-detail">
+                Start at the band marked <strong>1</strong>. The last band is the tolerance band.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
