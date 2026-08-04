@@ -104,7 +104,6 @@ h1 {
   gap: 16px;
 }
 
-.photo-card,
 .field,
 .help-card,
 .readout-card {
@@ -112,92 +111,6 @@ h1 {
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.03);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-}
-
-.photo-card {
-  padding: 18px;
-  display: grid;
-  gap: 14px;
-}
-
-.photo-card-head h2 {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.photo-card-head p {
-  margin: 8px 0 0;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.photo-button {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 52px;
-  padding: 0 16px;
-  border: 1px solid rgba(217, 165, 92, 0.36);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(217, 165, 92, 0.22), rgba(217, 165, 92, 0.08));
-  color: var(--text);
-  font: 700 0.98rem var(--font-display);
-  cursor: pointer;
-}
-
-.photo-button input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.photo-status {
-  margin: 0;
-  color: var(--muted);
-  font: 500 0.92rem var(--font-mono);
-}
-
-.photo-preview {
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-}
-
-#photoCanvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  min-height: 180px;
-}
-
-.photo-result {
-  min-height: 1.6em;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.photo-apply {
-  width: 100%;
-  min-height: 48px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text);
-  font: 700 0.95rem var(--font-display);
-  cursor: pointer;
-}
-
-.photo-apply:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .field {
