@@ -27,6 +27,32 @@
       <section class="panel app" aria-label="Resistor calculator">
         <div class="app-grid">
           <div class="controls">
+            <div class="photo-card">
+              <div class="photo-card-head">
+                <div>
+                  <h2>Photo detection</h2>
+                  <p>Take a picture or upload one. Detection runs locally in your browser.</p>
+                </div>
+              </div>
+
+              <label class="photo-button" for="photoInput">
+                <input id="photoInput" type="file" accept="image/*" capture="environment" />
+                <span>Choose or take photo</span>
+              </label>
+
+              <p class="photo-status" id="photoStatus">No photo selected.</p>
+
+              <div class="photo-preview" aria-label="Selected resistor photo preview">
+                <canvas id="photoCanvas" width="720" height="360"></canvas>
+              </div>
+
+              <div class="photo-result" id="photoResult" aria-live="polite"></div>
+
+              <button id="applyDetection" class="photo-apply" type="button" disabled>
+                Apply detected bands
+              </button>
+            </div>
+
             <label class="field">
               <span>Resistor type</span>
               <select id="resistorType">
