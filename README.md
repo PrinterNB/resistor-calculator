@@ -4,7 +4,7 @@ A simple resistor color band calculator for common 4-band and 5-band resistors. 
 
 The first band is marked in the preview so it is easier to tell which ring to read from first.
 
-The app includes a local photo-detection mode. It uses lighting-tolerant, browser-side image processing to find band candidates; no image is uploaded. Use one horizontal resistor against a simple background, filling most of the frame. The app rejects uncertain readings instead of applying a guess.
+The app also includes a local photo-detection mode. You can upload or take a picture, and it will try to identify the resistor bands entirely in your browser.
 
 ## Live Version
 

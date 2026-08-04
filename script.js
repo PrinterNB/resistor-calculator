@@ -371,87 +371,6 @@ function classifyStripeColor(rgb, bodyColorName) {
   return { name: bestName, confidence };
 }
 
-function median(values) {
-  if (!values.length) {
-    return 0;
-  }
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
-}
-
-function medianPixelRegion(imageData, x0, y0, x1, y1, step = 2) {
-  const { data, width, height } = imageData;
-  const startX = clamp(Math.floor(x0), 0, width - 1);
-  const endX = clamp(Math.ceil(x1), startX + 1, width);
-  const startY = clamp(Math.floor(y0), 0, height - 1);
-  const endY = clamp(Math.ceil(y1), startY + 1, height);
-  const reds = [];
-  const greens = [];
-  const blues = [];
-
-  for (let y = startY; y < endY; y += step) {
-    for (let x = startX; x < endX; x += step) {
-      const index = (y * width + x) * 4;
-      reds.push(data[index]);
-      greens.push(data[index + 1]);
-      blues.push(data[index + 2]);
-    }
-  }
-
-  return [median(reds), median(greens), median(blues)];
-}
-
-function normalizeRgb(rgb) {
-  const total = Math.max(1, rgb[0] + rgb[1] + rgb[2]);
-  return [rgb[0] / total, rgb[1] / total, rgb[2] / total];
-}
-
-function chromaDistance(a, b) {
-  const normalizedA = normalizeRgb(a);
-  const normalizedB = normalizeRgb(b);
-  return Math.hypot(
-    normalizedA[0] - normalizedB[0],
-    normalizedA[1] - normalizedB[1],
-    normalizedA[2] - normalizedB[2],
-  );
-}
-
-function classifyLightingTolerantColor(rgb, bodyRgb) {
-  const { h, s, l } = colorSummary(rgb);
-  const bodyChromaDistance = chromaDistance(rgb, bodyRgb);
-  const references = Object.entries(DETECTION_RGB)
-    .filter(([name]) => name !== "beige" && name !== "bodyBlue")
-    .map(([name, candidate]) => ({ name, distance: chromaDistance(rgb, candidate) }));
-  const closest = references.reduce((best, item) => (item.distance < best.distance ? item : best));
-
-  // Hue survives exposure changes more reliably than raw RGB. Neutrals need luminance.
-  let name = closest.name;
-  if (l < 0.18) {
-    name = "black";
-  } else if (s < 0.09) {
-    name = l > 0.78 ? "white" : (l > 0.52 ? "silver" : "gray");
-  } else if (h >= 12 && h < 42) {
-    name = l < 0.36 ? "brown" : "orange";
-  } else if (h >= 42 && h < 72) {
-    name = l < 0.7 ? "gold" : "yellow";
-  } else if (h >= 72 && h < 174) {
-    name = "green";
-  } else if (h >= 174 && h < 262) {
-    name = "blue";
-  } else if (h >= 262 && h < 340) {
-    name = "violet";
-  } else {
-    name = h < 12 || h >= 340 ? "red" : name;
-  }
-
-  const referenceDistance = chromaDistance(rgb, DETECTION_RGB[name]);
-  const contrast = Math.min(1, bodyChromaDistance * 5 + Math.abs(l - colorSummary(bodyRgb).l) * 1.4);
-  return {
-    name,
-    confidence: clamp((1 - referenceDistance * 2.8) * 0.6 + contrast * 0.4, 0, 1),
-  };
-}
-
 function buildForegroundMask(imageData) {
   const { width, height } = imageData;
   const border = averageBorderColor(imageData);
@@ -526,10 +445,7 @@ function findLargestComponent(maskInfo) {
     const boxWidth = maxX - minX + 1;
     const boxHeight = maxY - minY + 1;
     const aspect = boxWidth / Math.max(1, boxHeight);
-    const centered = 1 - Math.min(1, Math.abs((minX + maxX) / 2 - width / 2) / (width / 2));
-    const fillsFrame = boxWidth > width * 0.94 && boxHeight > height * 0.94;
-    const elongated = clamp((aspect - 1.4) / 3.5, 0, 1);
-    const score = fillsFrame ? 0 : size * (0.25 + elongated * 2.4 + centered * 0.2);
+    const score = size * (1 + Math.max(0, Math.min(aspect, 4) - 1) * 0.35);
 
     if (!best || score > best.score) {
       best = {
@@ -695,88 +611,6 @@ function scoreSequence(sequence) {
   return 0;
 }
 
-function getBandProfile(imageData, bounds) {
-  const xStart = Math.round(bounds.x + bounds.w * 0.1);
-  const xEnd = Math.round(bounds.x + bounds.w * 0.9);
-  const yStart = Math.round(bounds.y + bounds.h * 0.22);
-  const yEnd = Math.round(bounds.y + bounds.h * 0.78);
-  const rawColumns = [];
-
-  for (let x = xStart; x <= xEnd; x += 1) {
-    rawColumns.push({ x, rgb: medianPixelRegion(imageData, x, yStart, x + 1, yEnd) });
-  }
-
-  // A channel-wise median ignores the narrow color bands and is stable in shadows.
-  const bodyRgb = [
-    median(rawColumns.map((column) => column.rgb[0])),
-    median(rawColumns.map((column) => column.rgb[1])),
-    median(rawColumns.map((column) => column.rgb[2])),
-  ];
-
-  return rawColumns.map((column, index) => {
-    const neighborhood = rawColumns.slice(Math.max(0, index - 30), Math.min(rawColumns.length, index + 31));
-    const baseline = [
-      median(neighborhood.map((item) => item.rgb[0])),
-      median(neighborhood.map((item) => item.rgb[1])),
-      median(neighborhood.map((item) => item.rgb[2])),
-    ];
-    const { l } = colorSummary(column.rgb);
-    const baselineLightness = colorSummary(baseline).l;
-    const localContrast = chromaDistance(column.rgb, baseline) + Math.abs(l - baselineLightness) * 0.45;
-    const classification = classifyLightingTolerantColor(column.rgb, bodyRgb);
-
-    return {
-      x: column.x,
-      color: localContrast > 0.065 ? classification.name : null,
-      confidence: localContrast > 0.065 ? classification.confidence * clamp(localContrast / 0.18, 0.35, 1) : 0,
-    };
-  });
-}
-
-function sequenceCandidates(runs, count) {
-  const candidates = [];
-  const choose = (start, picked) => {
-    if (picked.length === count) {
-      candidates.push(picked);
-      return;
-    }
-    for (let index = start; index <= runs.length - (count - picked.length); index += 1) {
-      choose(index + 1, [...picked, runs[index]]);
-    }
-  };
-  choose(0, []);
-  return candidates;
-}
-
-function findBestBandSequence(runs) {
-  let best = null;
-
-  [4, 5].forEach((count) => {
-    sequenceCandidates(runs, count).forEach((candidate) => {
-      const averageConfidence = candidate.reduce((total, run) => total + run.averageConfidence, 0) / count;
-      const averageWidth = candidate.reduce((total, run) => total + run.width, 0) / count;
-      const widthsArePlausible = candidate.every((run) => run.width < averageWidth * 3.5);
-      if (!widthsArePlausible) {
-        return;
-      }
-
-      const forward = candidate.map((run) => run.color);
-      const reverse = [...forward].reverse();
-      const forwardScore = scoreSequence(forward);
-      const reverseScore = scoreSequence(reverse);
-      const semanticScore = Math.max(forwardScore, reverseScore) / count;
-      const bands = reverseScore > forwardScore ? reverse : forward;
-      const score = semanticScore * 0.72 + averageConfidence * 0.28;
-
-      if (!best || score > best.score) {
-        best = { count, bands, score, semanticScore, averageConfidence };
-      }
-    });
-  });
-
-  return best;
-}
-
 function analyzePhoto() {
   if (!currentPhoto) {
     return null;
@@ -791,48 +625,76 @@ function analyzePhoto() {
   const bounds = detectBoundsFromCanvas(analysisCanvas);
   const imageData = analysisCtx.getImageData(0, 0, analysisCanvas.width, analysisCanvas.height);
 
-  const columns = getBandProfile(imageData, bounds);
-  const smoothedColumns = smoothColumnColors(columns);
-  const runs = buildRuns(smoothedColumns)
-    .filter((run) => run.width <= bounds.w * 0.13 && run.averageConfidence >= 0.2);
-  const best = findBestBandSequence(runs);
+  const bodySample = averagePixelRegion(
+    imageData,
+    bounds.x + bounds.w * 0.38,
+    bounds.y + bounds.h * 0.28,
+    bounds.x + bounds.w * 0.62,
+    bounds.y + bounds.h * 0.72,
+  );
+  const bodyColor = classifyBodyColor(bodySample);
+  const expectedCount = bodyColor.name === "blue" ? 5 : 4;
 
-  if (!best) {
+  const xStart = Math.round(bounds.x + bounds.w * 0.12);
+  const xEnd = Math.round(bounds.x + bounds.w * 0.88);
+  const yStart = Math.round(bounds.y + bounds.h * 0.24);
+  const yEnd = Math.round(bounds.y + bounds.h * 0.76);
+  const columns = [];
+
+  for (let x = xStart; x <= xEnd; x += 1) {
+    const avg = averagePixelRegion(imageData, x, yStart, x + 1, yEnd);
+    const classification = classifyStripeColor(avg, bodyColor.name);
+    columns.push({
+      x,
+      color: classification.name,
+      confidence: classification.confidence,
+    });
+  }
+
+  const smoothedColumns = smoothColumnColors(columns);
+  const runs = buildRuns(smoothedColumns);
+
+  if (runs.length < expectedCount) {
     return {
       ok: false,
-      message: "I could not isolate a valid band sequence. Fill more of the frame with one resistor and avoid a busy background.",
+      message: `I found ${runs.length} likely band(s), but I need ${expectedCount}. Try a clearer, straighter photo with one resistor centered in frame.`,
       bounds,
+      bodyColor: bodyColor.name,
+      expectedCount,
     };
   }
 
-  const bodySample = medianPixelRegion(
-    imageData,
-    bounds.x + bounds.w * 0.42,
-    bounds.y + bounds.h * 0.3,
-    bounds.x + bounds.w * 0.58,
-    bounds.y + bounds.h * 0.7,
-  );
-  const bodyColor = classifyBodyColor(bodySample);
-  const confidence = best.score;
+  const rankedRuns = [...runs]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, expectedCount)
+    .sort((a, b) => a.center - b.center);
 
-  if (best.semanticScore < 1 || confidence < 0.58) {
+  const forward = rankedRuns.map((run) => run.color);
+  const reverse = [...forward].reverse();
+  const forwardScore = scoreSequence(forward);
+  const reverseScore = scoreSequence(reverse);
+  const chosenBands = reverseScore > forwardScore ? reverse : forward;
+  const chosenScore = Math.max(forwardScore, reverseScore);
+  const confidence = clamp(chosenScore / expectedCount, 0, 1);
+
+  if (chosenScore < expectedCount - 0.5) {
     return {
       ok: false,
-      message: "I found possible bands, but the colors are not distinct enough to read safely. Try diffuse light, reduce glare, and keep the resistor horizontal.",
+      message: `I detected candidate bands, but the reading is too uncertain. Try better lighting, less glare, and keep the resistor horizontal.`,
       bounds,
       bodyColor: bodyColor.name,
-      expectedCount: best.count,
+      expectedCount,
     };
   }
 
   return {
     ok: true,
-    message: `Detected ${best.count}-band resistor. Bands: ${best.bands.map((name) => COLOR_DEFS[name].name).join(", ")}.`,
+    message: `Detected ${expectedCount}-band ${BODY_TYPES[bodyColor.name].label.toLowerCase()}. Bands: ${chosenBands.map((name) => COLOR_DEFS[name].name).join(", ")}.`,
     bounds,
-    bodyColor: best.count === 5 ? "blue" : "beige",
-    expectedCount: best.count,
+    bodyColor: bodyColor.name,
+    expectedCount,
     confidence,
-    bands: best.bands,
+    bands: chosenBands,
   };
 }
 
@@ -853,10 +715,10 @@ function drawPhotoPreview(image, detection = null) {
     ctx.strokeRect(14, 14, canvas.width - 28, canvas.height - 28);
     ctx.setLineDash([]);
     ctx.fillStyle = "rgba(255,255,255,0.62)";
-    ctx.font = "600 20px sans-serif";
+    ctx.font = "600 20px var(--font-display)";
     ctx.textAlign = "center";
     ctx.fillText("Photo preview will appear here", canvas.width / 2, canvas.height / 2 - 8);
-    ctx.font = "500 14px monospace";
+    ctx.font = "500 14px var(--font-mono)";
     ctx.fillStyle = "rgba(255,255,255,0.45)";
     ctx.fillText("Best results: one resistor, horizontal, plain background", canvas.width / 2, canvas.height / 2 + 22);
     return;
@@ -882,7 +744,7 @@ function drawPhotoPreview(image, detection = null) {
     ctx.setLineDash([8, 7]);
     ctx.strokeRect(x, y, w, h);
     ctx.fillStyle = "rgba(217, 165, 92, 0.92)";
-    ctx.font = "700 14px monospace";
+    ctx.font = "700 14px var(--font-mono)";
     ctx.fillText("detected resistor", x + 8, Math.max(18, y - 10));
     ctx.restore();
   }
@@ -955,7 +817,6 @@ function loadImageFromFile(file) {
 
 async function handlePhotoSelection(file) {
   if (!file) {
-    currentPhoto = null;
     setPhotoPlaceholder();
     return;
   }
