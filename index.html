@@ -27,36 +27,6 @@
       <section class="panel app" aria-label="Resistor calculator">
         <div class="app-grid">
           <div class="controls">
-            <section class="scanner" aria-labelledby="scannerTitle">
-              <div class="section-heading">
-                <div>
-                  <p class="section-kicker">Camera scan</p>
-                  <h2 id="scannerTitle">Identify a resistor</h2>
-                </div>
-                <span class="scan-status" id="scanStatus">Camera off</span>
-              </div>
-
-              <div class="camera-frame" id="cameraFrame">
-                <video id="cameraVideo" playsinline muted aria-label="Live camera preview"></video>
-                <canvas id="cameraCanvas" hidden></canvas>
-                <div class="camera-guide" aria-hidden="true">
-                  <span class="guide-line"></span>
-                  <span class="guide-copy">Place bands along this line</span>
-                </div>
-                <div class="camera-placeholder" id="cameraPlaceholder">
-                  <strong>Camera ready</strong>
-                  <span>Use a bright, even light and keep the resistor horizontal.</span>
-                </div>
-              </div>
-
-              <div class="camera-actions">
-                <button class="button button-primary" id="startCamera" type="button">Open camera</button>
-                <button class="button" id="scanCamera" type="button" disabled>Scan resistor</button>
-                <button class="button button-quiet" id="stopCamera" type="button" disabled>Stop</button>
-              </div>
-              <p class="scan-result" id="scanResult" aria-live="polite">Your browser will ask for camera permission.</p>
-            </section>
-
             <label class="field">
               <span>Resistor type</span>
               <select id="resistorType">
@@ -93,12 +63,6 @@
               <p class="readout-detail">
                 Start at the band marked <strong>1</strong>. The last band is the tolerance band.
               </p>
-            </div>
-
-            <div class="readout-card scan-readout" id="scanReadout" hidden>
-              <p class="readout-label">Camera result</p>
-              <p class="readout-detail" id="scanReadoutDetail"></p>
-              <button class="button button-primary" id="applyScan" type="button">Use detected bands</button>
             </div>
           </div>
         </div>
